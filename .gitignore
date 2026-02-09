@@ -23,3 +23,6 @@ yarn-error.log*
 # App specific
 clips/
 test-results/
+
+# test fixtures
+test/fixtures/
