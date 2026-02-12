@@ -154,10 +154,12 @@ npm run test     # Vitest runs (empty suite passes)
 - Video export streaming as Node.js `Readable`
 - Smoke-tested against live NVR (10 cameras discovered)
 
-### Phase 5: Storage Layer
-- `IStorageProvider` interface (Strategy Pattern)
-- `FileSystemProvider` with YYYY-MM-DD directories
-- Stream-to-file with error handling and atomic writes
+### Phase 5: Storage Layer ✅ Complete
+- `IStorageProvider` interface (Strategy Pattern for future S3/R2)
+- `FileSystemProvider` with YYYY-MM-DD directories and atomic `.tmp` → rename writes
+- Stream-to-file with `pipeline()` for zero-copy memory efficiency
+- Storage factory keyed on `STORAGE_TYPE` env var
+- 100% statement and branch coverage
 
 ### Phase 6: Capture Orchestrator
 - Wire webhook → client → storage

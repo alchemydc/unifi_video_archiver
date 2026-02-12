@@ -279,6 +279,16 @@ const result = await provider.save(stream, 'manual-test.mp4', Date.now());
 console.log('Saved to:', result.location, `(${result.sizeBytes} bytes)`);
 ```
 
+Add to package.json as `test-storage` script:
+```json
+"test-storage": "node --loader ts-node/esm src/bin/test-storage.ts"
+```
+
+Run:
+```bash
+npm run test-storage
+```
+
 ---
 
 ## Edge Cases & Gotchas

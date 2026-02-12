@@ -12,9 +12,9 @@ It is designed with **reliability** and **performance** in mind, using Node.js s
 
 ## 🚀 Current Status
 
-**Phase 4: UniFi Client (Complete)**
+**Phase 5: Storage Layer (Complete)**
 
-The authenticated UniFi Protect API client has been built and smoke-tested against a live NVR. It provides session management, camera discovery by MAC address, and video export streaming as a Node.js `Readable`.
+The local filesystem storage provider has been built and tested. Clips are atomically written to date-organized directories (`YYYY-MM-DD`) using Node.js streams. The Strategy Pattern enables future S3/R2 backends.
 
 ### Tech Stack
 *   **Runtime:** Node.js (Latest LTS)
@@ -67,6 +67,7 @@ The authenticated UniFi Protect API client has been built and smoke-tested again
 | `npm test` | Run unit tests with Vitest |
 | `npm run scout` | Run the webhook scout utility to capture live events |
 | `npm run test-client` | Smoke test the UniFi Protect client against a live NVR |
+| `npm run test-storage` | Smoke test the storage layer (writes to `./clips`) |
 
 ---
 
@@ -80,8 +81,8 @@ We are following a phased implementation plan.
 | **2. Scout Utility** | ✅ **Done** | Webhook listener captures real NVR events as test fixtures. |
 | **3. Core Utilities** | ✅ **Done** | TDD for time window calculations and file naming. |
 | **4. UniFi Client** | ✅ **Done** | Authenticated API client (using `unifi-protect` lib). |
-| **5. Storage Layer** | 🚧 **Next** | FileSystem provider (Stream-to-disk). |
-| **6. Orchestrator** | ⏳ Planned | Wire Webhook -> Client -> Storage. |
+| **5. Storage Layer** | ✅ **Done** | FileSystem provider (Stream-to-disk). |
+| **6. Orchestrator** | 🚧 **Next** | Wire Webhook -> Client -> Storage. |
 | **7. HTTP Server** | ⏳ Planned | Production-ready Express server. |
 | **8. Hardening** | ⏳ Planned | Dockerization and deployment docs. |
 
