@@ -12,9 +12,9 @@ It is designed with **reliability** and **performance** in mind, using Node.js s
 
 ## 🚀 Current Status
 
-**Phase 5: Storage Layer (Complete)**
+**Phase 7: HTTP Server (Complete)**
 
-The local filesystem storage provider has been built and tested. Clips are atomically written to date-organized directories (`YYYY-MM-DD`) using Node.js streams. The Strategy Pattern enables future S3/R2 backends.
+A production-ready Express server now handles webhook ingestion. It includes Zod-based validation, a `/health` endpoint, and graceful shutdown (SIGINT/SIGTERM) to ensure clean dissociation from the NVR.
 
 ### Tech Stack
 *   **Runtime:** Node.js (Latest LTS)
@@ -68,6 +68,7 @@ The local filesystem storage provider has been built and tested. Clips are atomi
 | `npm run scout` | Run the webhook scout utility to capture live events |
 | `npm run test-client` | Smoke test the UniFi Protect client against a live NVR |
 | `npm run test-storage` | Smoke test the storage layer (writes to `./clips`) |
+| `npm run test-orchestrator` | Smoke test the full capture pipeline against a live NVR |
 
 ---
 
@@ -82,9 +83,9 @@ We are following a phased implementation plan.
 | **3. Core Utilities** | ✅ **Done** | TDD for time window calculations and file naming. |
 | **4. UniFi Client** | ✅ **Done** | Authenticated API client (using `unifi-protect` lib). |
 | **5. Storage Layer** | ✅ **Done** | FileSystem provider (Stream-to-disk). |
-| **6. Orchestrator** | 🚧 **Next** | Wire Webhook -> Client -> Storage. |
-| **7. HTTP Server** | ⏳ Planned | Production-ready Express server. |
-| **8. Hardening** | ⏳ Planned | Dockerization and deployment docs. |
+| **6. Orchestrator** | ✅ **Done** | Wire Webhook → Client → Storage pipeline. |
+| **7. HTTP Server** | ✅ **Done** | Production-ready Express server. |
+| **8. Hardening** | 🚧 **Next** | Dockerization and deployment docs. |
 
 ---
 

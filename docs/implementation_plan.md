@@ -161,15 +161,19 @@ npm run test     # Vitest runs (empty suite passes)
 - Storage factory keyed on `STORAGE_TYPE` env var
 - 100% statement and branch coverage
 
-### Phase 6: Capture Orchestrator
-- Wire webhook → client → storage
-- Settling delay implementation
-- Integration tests with MSW
+### Phase 6: Capture Orchestrator ✅ Complete
+- `CaptureOrchestrator` class with dependency injection (client, storage, config)
+- Pipeline: webhook payload → camera lookup → time window → settling delay → NVR export → storage save
+- Configurable settling delay to wait for NVR video flush
+- 6 unit tests with 100% statement and branch coverage
+- Smoke test utility (`npm run test-orchestrator`)
 
-### Phase 7: HTTP Server
-- Express webhook endpoint
+### Phase 7: HTTP Server ✅ Complete
+- Express webhook endpoint with Zod validation
 - Health check `/health`
-- Graceful shutdown
+- Graceful shutdown logic (SIGINT/SIGTERM)
+- 5 unit tests with 100% statement coverage
+- Integration of whole pipeline in `src/index.ts`
 
 ### Phase 8: Production Hardening
 - Dockerfile (multi-stage build)
