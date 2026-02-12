@@ -17,7 +17,8 @@
     "test:coverage": "vitest run --coverage",
     "scout": "node --loader ts-node/esm src/bin/scout.ts",
     "test-client": "node --loader ts-node/esm src/bin/test-client.ts",
-    "test-storage": "node --loader ts-node/esm src/bin/test-storage.ts"
+    "test-storage": "node --loader ts-node/esm src/bin/test-storage.ts",
+    "test-orchestrator": "node --loader ts-node/esm src/bin/test-orchestrator.ts"
   },
   "keywords": [],
   "author": "",

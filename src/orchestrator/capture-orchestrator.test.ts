@@ -1,0 +1,109 @@
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { CaptureOrchestrator } from './capture-orchestrator.js';
+import { Readable } from 'node:stream';
+import type { WebhookPayload } from '../schemas/webhook.schema.js';
+
+// Build a valid payload for testing
+const makePayload = (overrides?: Partial<WebhookPayload>): WebhookPayload => ({
+    alarm: {
+        name: 'Barking Dog Alert',
+        triggers: [{ key: 'motion', device: 'A89C6C487E19' }],
+    },
+    timestamp: 1770840108431,
+    ...overrides,
+});
+
+describe('CaptureOrchestrator', () => {
+    let mockClient: any;
+    let mockStorage: any;
+    let orchestrator: CaptureOrchestrator;
+
+    beforeEach(() => {
+        mockClient = {
+            findCameraByMac: vi.fn().mockReturnValue({ id: 'cam-uuid-1', name: 'Front Door', mac: 'A89C6C487E19' }),
+            exportVideoClip: vi.fn(async () => Readable.from([Buffer.from('fake mp4 data')])),
+        };
+        mockStorage = {
+            save: vi.fn(async () => ({ location: '/clips/2026-02-11/barking-dog-alert_motion_2026-02-11T20-01-48Z.mp4', sizeBytes: 13 })),
+        };
+        // Use 0ms settling delay by default for speed
+        orchestrator = new CaptureOrchestrator(mockClient, mockStorage, 0, 10, 20);
+    });
+
+    it('should process a webhook through the full pipeline successfully', async () => {
+        const payload = makePayload();
+        const result = await orchestrator.handleWebhook(payload);
+
+        // Verify camera lookup
+        expect(mockClient.findCameraByMac).toHaveBeenCalledWith('A89C6C487E19');
+
+        // Verify video export
+        expect(mockClient.exportVideoClip).toHaveBeenCalledWith(
+            expect.objectContaining({ id: 'cam-uuid-1' }),
+            expect.objectContaining({
+                start: payload.timestamp - 10000,
+                end: payload.timestamp + 20000
+            })
+        );
+
+        // Verify storage save
+        expect(mockStorage.save).toHaveBeenCalledWith(
+            expect.any(Readable),
+            expect.stringContaining('barking-dog-alert'),
+            payload.timestamp
+        );
+
+        expect(result.location).toContain('barking-dog-alert');
+    });
+
+    it('should throw if no trigger device is found in the payload', async () => {
+        const payload = makePayload({ alarm: { name: 'Empty Triggers', triggers: [] } as any });
+
+        await expect(orchestrator.handleWebhook(payload))
+            .rejects.toThrow('No trigger device found');
+    });
+
+    it('should throw if camera is not found by MAC', async () => {
+        mockClient.findCameraByMac.mockReturnValue(null);
+        const payload = makePayload();
+
+        await expect(orchestrator.handleWebhook(payload))
+            .rejects.toThrow('Camera not found for MAC: A89C6C487E19');
+    });
+
+    it('should propagate errors from the UniFi client', async () => {
+        mockClient.exportVideoClip.mockRejectedValue(new Error('NVR Offline'));
+        const payload = makePayload();
+
+        await expect(orchestrator.handleWebhook(payload))
+            .rejects.toThrow('NVR Offline');
+    });
+
+    it('should propagate errors from the storage provider', async () => {
+        mockStorage.save.mockRejectedValue(new Error('Disk Full'));
+        const payload = makePayload();
+
+        await expect(orchestrator.handleWebhook(payload))
+            .rejects.toThrow('Disk Full');
+    });
+
+    it('should respect the settling delay if configured', async () => {
+        vi.useFakeTimers();
+        const settlingDelayMs = 5000;
+        orchestrator = new CaptureOrchestrator(mockClient, mockStorage, settlingDelayMs, 10, 20);
+
+        const payload = makePayload();
+        const promise = orchestrator.handleWebhook(payload);
+
+        // It should be waiting
+        expect(mockClient.exportVideoClip).not.toHaveBeenCalled();
+
+        // Advance time
+        await vi.advanceTimersByTimeAsync(settlingDelayMs);
+
+        await promise;
+        expect(mockClient.exportVideoClip).toHaveBeenCalled();
+
+        vi.useRealTimers();
+    });
+});
