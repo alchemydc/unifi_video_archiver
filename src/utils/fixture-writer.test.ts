@@ -3,17 +3,17 @@ import { readFile, rm } from 'node:fs/promises';
 import { saveFixture } from './fixture-writer.js';
 import type { WebhookPayload } from '../schemas/webhook.schema.js';
 
-const FIXTURES_DIR = 'test/fixtures';
+const FIXTURES_TEST_DIR = 'test/fixtures-test';
 
 describe('saveFixture', () => {
     beforeEach(async () => {
         // Clean up test fixtures before each test
-        await rm(FIXTURES_DIR, { recursive: true, force: true });
+        await rm(FIXTURES_TEST_DIR, { recursive: true, force: true });
     });
 
     afterEach(async () => {
         // Clean up after tests
-        await rm(FIXTURES_DIR, { recursive: true, force: true });
+        await rm(FIXTURES_TEST_DIR, { recursive: true, force: true });
     });
 
     it('should create the fixtures directory and save the payload', async () => {
@@ -22,8 +22,8 @@ describe('saveFixture', () => {
             timestamp: Date.now()
         } as unknown as WebhookPayload;
 
-        const filepath = await saveFixture(payload);
-        expect(filepath).toContain(FIXTURES_DIR);
+        const filepath = await saveFixture(payload, FIXTURES_TEST_DIR);
+        expect(filepath).toContain(FIXTURES_TEST_DIR);
         expect(filepath).toContain('webhook-');
         expect(filepath).toMatch(/\.json$/);
 
@@ -40,7 +40,7 @@ describe('saveFixture', () => {
         vi.useFakeTimers();
         vi.setSystemTime(mockDate);
 
-        const filepath = await saveFixture(payload);
+        const filepath = await saveFixture(payload, FIXTURES_TEST_DIR);
         expect(filepath).toContain('2026-02-09T12-00-00-000Z');
 
         vi.useRealTimers();
