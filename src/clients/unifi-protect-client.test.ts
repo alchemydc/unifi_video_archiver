@@ -1,0 +1,137 @@
+import { vi, describe, it, expect, beforeEach } from 'vitest';
+import { UnifiProtectClient } from './unifi-protect-client.js';
+import { ProtectApi } from 'unifi-protect';
+import { Readable } from 'node:stream';
+
+// Mock the unifi-protect library
+vi.mock('unifi-protect', () => {
+    return {
+        ProtectApi: vi.fn().mockImplementation(function () {
+            return {
+                login: vi.fn(),
+                getBootstrap: vi.fn(),
+                bootstrap: {
+                    cameras: [
+                        { id: 'cam-uuid-1', mac: 'A89C6C487E19', name: 'Front Door' },
+                        { id: 'cam-uuid-2', mac: 'B1:B2:B3:B4:B5:B6', name: 'Back Yard' }
+                    ],
+                },
+                retrieve: vi.fn(),
+                responseOk: vi.fn().mockReturnValue(true),
+                reset: vi.fn(),
+                name: 'Mock NVR [UDMP]',
+            };
+        })
+    };
+});
+
+describe('UnifiProtectClient', () => {
+    let client: UnifiProtectClient;
+    let mockApi: any;
+
+    beforeEach(() => {
+        vi.clearAllMocks();
+        client = new UnifiProtectClient('localhost', 'admin', 'password');
+        // @ts-ignore - accessing private field for testing
+        mockApi = client.api;
+    });
+
+    describe('connect', () => {
+        it('should login and bootstrap successfully', async () => {
+            mockApi.login.mockResolvedValue(true);
+            mockApi.getBootstrap.mockResolvedValue(true);
+
+            await expect(client.connect()).resolves.not.toThrow();
+            expect(mockApi.login).toHaveBeenCalledWith('localhost', 'admin', 'password');
+            expect(mockApi.getBootstrap).toHaveBeenCalled();
+        });
+
+        it('should throw if login fails', async () => {
+            mockApi.login.mockResolvedValue(false);
+
+            await expect(client.connect()).rejects.toThrow('UniFi Protect login failed');
+        });
+
+        it('should throw if bootstrap fails', async () => {
+            mockApi.login.mockResolvedValue(true);
+            mockApi.getBootstrap.mockResolvedValue(false);
+
+            await expect(client.connect()).rejects.toThrow('UniFi Protect bootstrap failed');
+        });
+    });
+
+    describe('findCameraByMac', () => {
+        it('should find camera with various MAC formats', () => {
+            // Test fixture MAC (no separators)
+            const cam1 = client.findCameraByMac('A89C6C487E19');
+            expect(cam1?.id).toBe('cam-uuid-1');
+
+            // Lowercase and colons
+            const cam2 = client.findCameraByMac('b1:b2:b3:b4:b5:b6');
+            expect(cam2?.id).toBe('cam-uuid-2');
+
+            // Mixed dash and upper
+            const cam3 = client.findCameraByMac('A8-9C-6C-48-7E-19');
+            expect(cam3?.id).toBe('cam-uuid-1');
+        });
+
+        it('should return null if camera not found', () => {
+            const cam = client.findCameraByMac('NONEXISTENT');
+            expect(cam).toBeNull();
+        });
+    });
+
+    describe('exportVideoClip', () => {
+        const mockCamera = { id: 'cam-id', name: 'Test Cam' } as any;
+        const mockTimeWindow = { start: 1000, end: 2000 };
+
+        it('should return a readable stream on success', async () => {
+            const mockStream = Readable.from(['data']);
+            mockApi.retrieve.mockResolvedValue({
+                statusCode: 200,
+                body: mockStream
+            });
+
+            const stream = await client.exportVideoClip(mockCamera, mockTimeWindow);
+            expect(stream).toBeDefined();
+            expect(mockApi.retrieve).toHaveBeenCalledWith(
+                expect.stringContaining('cam-id'),
+                { method: 'GET' },
+                expect.objectContaining({ timeout: 60000 })
+            );
+        });
+
+        it('should throw if response is null', async () => {
+            mockApi.retrieve.mockResolvedValue(null);
+
+            await expect(client.exportVideoClip(mockCamera, mockTimeWindow))
+                .rejects.toThrow('Video export failed: No response from NVR');
+        });
+
+        it('should throw if status code is not OK', async () => {
+            mockApi.retrieve.mockResolvedValue({
+                statusCode: 401,
+                body: {}
+            });
+            mockApi.responseOk.mockReturnValue(false);
+
+            await expect(client.exportVideoClip(mockCamera, mockTimeWindow))
+                .rejects.toThrow('Video export failed: HTTP 401');
+        });
+    });
+
+    describe('disconnect', () => {
+        it('should call api.reset', () => {
+            client.disconnect();
+            expect(mockApi.reset).toHaveBeenCalled();
+        });
+    });
+
+    describe('createUnifiClient', () => {
+        it('should create a new instance of UnifiProtectClient', async () => {
+            const { createUnifiClient } = await import('./unifi-protect-client.js');
+            const client = createUnifiClient();
+            expect(client).toBeInstanceOf(UnifiProtectClient);
+        });
+    });
+});
