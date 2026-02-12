@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { createStorageProvider } from './index.js';
 import { FileSystemProvider } from './filesystem-provider.js';
 import { env } from '../config/env.schema.js';
@@ -13,14 +13,13 @@ describe('Storage Factory', () => {
     it('should throw for unsupported storage types', () => {
         // Temporarily override env.STORAGE_TYPE
         const originalType = env.STORAGE_TYPE;
-        // @ts-ignore - manipulating env for testing
+        // @ts-expect-error - manipulating env for testing
         env.STORAGE_TYPE = 'invalid';
 
         try {
             expect(() => createStorageProvider()).toThrow('Unsupported storage type: invalid');
         } finally {
             // Restore
-            // @ts-ignore
             env.STORAGE_TYPE = originalType;
         }
     });

@@ -1,7 +1,7 @@
-import { vi, describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { UnifiProtectClient } from './unifi-protect-client.js';
-import { ProtectApi } from 'unifi-protect';
 import { Readable } from 'node:stream';
+import type { ProtectCameraConfig } from 'unifi-protect';
 
 // Mock the unifi-protect library
 vi.mock('unifi-protect', () => {
@@ -27,19 +27,19 @@ vi.mock('unifi-protect', () => {
 
 describe('UnifiProtectClient', () => {
     let client: UnifiProtectClient;
-    let mockApi: any;
+    let mockApi: Record<string, ReturnType<typeof vi.fn> | unknown>;
 
     beforeEach(() => {
         vi.clearAllMocks();
         client = new UnifiProtectClient('localhost', 'admin', 'password');
-        // @ts-ignore - accessing private field for testing
-        mockApi = client.api;
+        // @ts-expect-error - accessing private field for testing
+        mockApi = client['api'];
     });
 
     describe('connect', () => {
         it('should login and bootstrap successfully', async () => {
-            mockApi.login.mockResolvedValue(true);
-            mockApi.getBootstrap.mockResolvedValue(true);
+            (mockApi.login as ReturnType<typeof vi.fn>).mockResolvedValue(true);
+            (mockApi.getBootstrap as ReturnType<typeof vi.fn>).mockResolvedValue(true);
 
             await expect(client.connect()).resolves.not.toThrow();
             expect(mockApi.login).toHaveBeenCalledWith('localhost', 'admin', 'password');
@@ -47,14 +47,14 @@ describe('UnifiProtectClient', () => {
         });
 
         it('should throw if login fails', async () => {
-            mockApi.login.mockResolvedValue(false);
+            (mockApi.login as ReturnType<typeof vi.fn>).mockResolvedValue(false);
 
             await expect(client.connect()).rejects.toThrow('UniFi Protect login failed');
         });
 
         it('should throw if bootstrap fails', async () => {
-            mockApi.login.mockResolvedValue(true);
-            mockApi.getBootstrap.mockResolvedValue(false);
+            (mockApi.login as ReturnType<typeof vi.fn>).mockResolvedValue(true);
+            (mockApi.getBootstrap as ReturnType<typeof vi.fn>).mockResolvedValue(false);
 
             await expect(client.connect()).rejects.toThrow('UniFi Protect bootstrap failed');
         });
@@ -82,12 +82,12 @@ describe('UnifiProtectClient', () => {
     });
 
     describe('exportVideoClip', () => {
-        const mockCamera = { id: 'cam-id', name: 'Test Cam' } as any;
+        const mockCamera = { id: 'cam-id', name: 'Test Cam' } as unknown as ProtectCameraConfig;
         const mockTimeWindow = { start: 1000, end: 2000 };
 
         it('should return a readable stream on success', async () => {
             const mockStream = Readable.from(['data']);
-            mockApi.retrieve.mockResolvedValue({
+            (mockApi.retrieve as ReturnType<typeof vi.fn>).mockResolvedValue({
                 statusCode: 200,
                 body: mockStream
             });
@@ -102,18 +102,18 @@ describe('UnifiProtectClient', () => {
         });
 
         it('should throw if response is null', async () => {
-            mockApi.retrieve.mockResolvedValue(null);
+            (mockApi.retrieve as ReturnType<typeof vi.fn>).mockResolvedValue(null);
 
             await expect(client.exportVideoClip(mockCamera, mockTimeWindow))
                 .rejects.toThrow('Video export failed: No response from NVR');
         });
 
         it('should throw if status code is not OK', async () => {
-            mockApi.retrieve.mockResolvedValue({
+            (mockApi.retrieve as ReturnType<typeof vi.fn>).mockResolvedValue({
                 statusCode: 401,
                 body: {}
             });
-            mockApi.responseOk.mockReturnValue(false);
+            (mockApi.responseOk as ReturnType<typeof vi.fn>).mockReturnValue(false);
 
             await expect(client.exportVideoClip(mockCamera, mockTimeWindow))
                 .rejects.toThrow('Video export failed: HTTP 401');
@@ -130,8 +130,8 @@ describe('UnifiProtectClient', () => {
     describe('createUnifiClient', () => {
         it('should create a new instance of UnifiProtectClient', async () => {
             const { createUnifiClient } = await import('./unifi-protect-client.js');
-            const client = createUnifiClient();
-            expect(client).toBeInstanceOf(UnifiProtectClient);
+            const factoryClient = createUnifiClient();
+            expect(factoryClient).toBeInstanceOf(UnifiProtectClient);
         });
     });
 });

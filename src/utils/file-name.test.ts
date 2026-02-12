@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { generateClipFilename } from './file-name.js';
 import { loadFixture } from './fixture-loader.js';
+import type { WebhookPayload } from '../schemas/webhook.schema.js';
 
 describe('generateClipFilename', () => {
     it('should generate a safe filename from a real fixture', () => {
@@ -8,7 +9,6 @@ describe('generateClipFilename', () => {
         // alarm: { name: "Barking", ... triggers: [{ key: "audio_alarm_bark", ... }] }
         // timestamp: 1770840108431 -> 2026-02-11T20:01:48.431Z (approx - wait, the user says the example fixture timestamp is 1770840108431)
         // Let's check the actually expected ISO string for that timestamp.
-        const expectedDate = new Date(fixture.timestamp).toISOString().replace(/[:.]/g, '-').slice(0, 19) + 'Z';
         const filename = generateClipFilename(fixture);
 
         expect(filename).toContain('barking');
@@ -23,7 +23,7 @@ describe('generateClipFilename', () => {
                 triggers: [{ key: 'motion', device: '123' }]
             },
             timestamp: 1676149200000
-        } as any;
+        } as unknown as WebhookPayload;
 
         const filename = generateClipFilename(payload);
         expect(filename).toContain('my-custom-alert');
@@ -40,7 +40,7 @@ describe('generateClipFilename', () => {
                 triggers: []
             },
             timestamp: 1676149200000
-        } as any;
+        } as unknown as WebhookPayload;
 
         const filename = generateClipFilename(payload);
         expect(filename).toContain('test_unknown_');
@@ -53,7 +53,7 @@ describe('generateClipFilename', () => {
                 triggers: [{ key: 'motion_detected_v2', device: '123' }]
             },
             timestamp: 1676149200000
-        } as any;
+        } as unknown as WebhookPayload;
 
         const filename = generateClipFilename(payload);
         expect(filename).toContain('motion-detected-v2');

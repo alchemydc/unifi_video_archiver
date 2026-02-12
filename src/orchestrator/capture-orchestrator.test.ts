@@ -2,6 +2,8 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { CaptureOrchestrator } from './capture-orchestrator.js';
 import { Readable } from 'node:stream';
 import type { WebhookPayload } from '../schemas/webhook.schema.js';
+import type { UnifiProtectClient } from '../clients/unifi-protect-client.js';
+import type { IStorageProvider } from '../storage/storage-provider.js';
 
 // Build a valid payload for testing
 const makePayload = (overrides?: Partial<WebhookPayload>): WebhookPayload => ({
@@ -14,8 +16,8 @@ const makePayload = (overrides?: Partial<WebhookPayload>): WebhookPayload => ({
 });
 
 describe('CaptureOrchestrator', () => {
-    let mockClient: any;
-    let mockStorage: any;
+    let mockClient: { findCameraByMac: ReturnType<typeof vi.fn>; exportVideoClip: ReturnType<typeof vi.fn> };
+    let mockStorage: { save: ReturnType<typeof vi.fn> };
     let orchestrator: CaptureOrchestrator;
 
     beforeEach(() => {
@@ -27,7 +29,11 @@ describe('CaptureOrchestrator', () => {
             save: vi.fn(async () => ({ location: '/clips/2026-02-11/barking-dog-alert_motion_2026-02-11T20-01-48Z.mp4', sizeBytes: 13 })),
         };
         // Use 0ms settling delay by default for speed
-        orchestrator = new CaptureOrchestrator(mockClient, mockStorage, 0, 10, 20);
+        orchestrator = new CaptureOrchestrator(
+            mockClient as unknown as UnifiProtectClient,
+            mockStorage as unknown as IStorageProvider,
+            0, 10, 20,
+        );
     });
 
     it('should process a webhook through the full pipeline successfully', async () => {
@@ -57,7 +63,7 @@ describe('CaptureOrchestrator', () => {
     });
 
     it('should throw if no trigger device is found in the payload', async () => {
-        const payload = makePayload({ alarm: { name: 'Empty Triggers', triggers: [] } as any });
+        const payload = makePayload({ alarm: { name: 'Empty Triggers', triggers: [] } as unknown as WebhookPayload['alarm'] });
 
         await expect(orchestrator.handleWebhook(payload))
             .rejects.toThrow('No trigger device found');
@@ -90,7 +96,11 @@ describe('CaptureOrchestrator', () => {
     it('should respect the settling delay if configured', async () => {
         vi.useFakeTimers();
         const settlingDelayMs = 5000;
-        orchestrator = new CaptureOrchestrator(mockClient, mockStorage, settlingDelayMs, 10, 20);
+        orchestrator = new CaptureOrchestrator(
+            mockClient as unknown as UnifiProtectClient,
+            mockStorage as unknown as IStorageProvider,
+            settlingDelayMs, 10, 20,
+        );
 
         const payload = makePayload();
         const promise = orchestrator.handleWebhook(payload);
