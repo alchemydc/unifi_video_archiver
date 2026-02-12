@@ -12,9 +12,9 @@ It is designed with **reliability** and **performance** in mind, using Node.js s
 
 ## 🚀 Current Status
 
-**Phase 2: Scout Utility (Complete)**
+**Phase 4: UniFi Client (Complete)**
 
-The webhook scout utility has been built and used to capture real UniFi Protect webhook payloads from a live NVR. These fixtures power our test-driven development cycle going forward.
+The authenticated UniFi Protect API client has been built and smoke-tested against a live NVR. It provides session management, camera discovery by MAC address, and video export streaming as a Node.js `Readable`.
 
 ### Tech Stack
 *   **Runtime:** Node.js (Latest LTS)
@@ -66,6 +66,7 @@ The webhook scout utility has been built and used to capture real UniFi Protect 
 | `npm run lint` | Run code quality checks |
 | `npm test` | Run unit tests with Vitest |
 | `npm run scout` | Run the webhook scout utility to capture live events |
+| `npm run test-client` | Smoke test the UniFi Protect client against a live NVR |
 
 ---
 
@@ -77,9 +78,9 @@ We are following a phased implementation plan.
 | :--- | :--- | :--- |
 | **1. Project Scaffolding** | ✅ **Done** | Setup TS, ESLint, Zod, Logger. |
 | **2. Scout Utility** | ✅ **Done** | Webhook listener captures real NVR events as test fixtures. |
-| **3. Core Utilities** | 🚧 **Next** | TDD for time window calculations and file naming. |
-| **4. UniFi Client** | ⏳ Planned | Authenticated API client (using `unifi-protect` lib). |
-| **5. Storage Layer** | ⏳ Planned | FileSystem provider (Stream-to-disk). |
+| **3. Core Utilities** | ✅ **Done** | TDD for time window calculations and file naming. |
+| **4. UniFi Client** | ✅ **Done** | Authenticated API client (using `unifi-protect` lib). |
+| **5. Storage Layer** | 🚧 **Next** | FileSystem provider (Stream-to-disk). |
 | **6. Orchestrator** | ⏳ Planned | Wire Webhook -> Client -> Storage. |
 | **7. HTTP Server** | ⏳ Planned | Production-ready Express server. |
 | **8. Hardening** | ⏳ Planned | Dockerization and deployment docs. |

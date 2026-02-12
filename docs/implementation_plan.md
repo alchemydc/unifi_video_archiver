@@ -134,26 +134,30 @@ npm run test     # Vitest runs (empty suite passes)
 
 ## Future Phases (Documented for Later Execution)
 
-### Phase 2: Scout Utility
+### Phase 2: Scout Utility ✅ Complete
 - Express server to receive webhooks
 - Log and validate payload with Zod
 - Generate typed schema from real events
 - Output test fixture JSON
 
-### Phase 3: Core Utilities (TDD)
+### Phase 3: Core Utilities (TDD) ✅ Complete
 - `TimeWindowUtil` - epoch timestamp generation with pre/post buffers
 - `FileNameUtil` - safe filenames from events
-- Unit tests with >90% coverage
+- `FixtureLoader` - test helper for loading captured webhook payloads
+- 100% statement and branch coverage on all utilities
 
-### Phase 4: UniFi Client
+### Phase 4: UniFi Client ✅ Complete
 - Integrate `unifi-protect` npm library
-- Session management and auto-retry on 401
-- Video export streaming
+- Winston → `ProtectLogging` adapter
+- Session management (login, bootstrap, disconnect)
+- Camera lookup by MAC address (webhook device → NVR UUID)
+- Video export streaming as Node.js `Readable`
+- Smoke-tested against live NVR (10 cameras discovered)
 
 ### Phase 5: Storage Layer
-- `IStorageProvider` interface
+- `IStorageProvider` interface (Strategy Pattern)
 - `FileSystemProvider` with YYYY-MM-DD directories
-- Stream-to-file with error handling
+- Stream-to-file with error handling and atomic writes
 
 ### Phase 6: Capture Orchestrator
 - Wire webhook → client → storage
