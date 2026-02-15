@@ -21,6 +21,12 @@ const envSchema = z.object({
     CAPTURE_POST_BUFFER_SECONDS: z.coerce.number().default(20),
     SETTLING_DELAY_SECONDS: z.coerce.number().default(5),
 
+    // Retry configuration
+    RETRY_MAX_ATTEMPTS: z.coerce.number().default(3),
+    RETRY_INITIAL_DELAY_MS: z.coerce.number().default(1000),
+    RETRY_BACKOFF_MULTIPLIER: z.coerce.number().default(2),
+    RETRY_MAX_DELAY_MS: z.coerce.number().default(15000),
+
     // Server
     WEBHOOK_PORT: z.coerce.number().default(3000),
 });

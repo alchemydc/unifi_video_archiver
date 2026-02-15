@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { CaptureOrchestrator } from './capture-orchestrator.js';
 import { Readable } from 'node:stream';
 import type { WebhookPayload } from '../schemas/webhook.schema.js';
@@ -21,6 +21,7 @@ describe('CaptureOrchestrator', () => {
     let orchestrator: CaptureOrchestrator;
 
     beforeEach(() => {
+        vi.useFakeTimers();
         mockClient = {
             findCameraByMac: vi.fn().mockReturnValue({ id: 'cam-uuid-1', name: 'Front Door', mac: 'A89C6C487E19' }),
             exportVideoClip: vi.fn(async () => Readable.from([Buffer.from('fake mp4 data')])),
@@ -33,7 +34,12 @@ describe('CaptureOrchestrator', () => {
             mockClient as unknown as UnifiProtectClient,
             mockStorage as unknown as IStorageProvider,
             0, 10, 20,
+            { maxRetries: 0, initialDelayMs: 1, backoffMultiplier: 1, maxDelayMs: 1 },
         );
+    });
+
+    afterEach(() => {
+        vi.useRealTimers();
     });
 
     it('should process a webhook through the full pipeline successfully', async () => {
@@ -94,12 +100,12 @@ describe('CaptureOrchestrator', () => {
     });
 
     it('should respect the settling delay if configured', async () => {
-        vi.useFakeTimers();
         const settlingDelayMs = 5000;
         orchestrator = new CaptureOrchestrator(
             mockClient as unknown as UnifiProtectClient,
             mockStorage as unknown as IStorageProvider,
             settlingDelayMs, 10, 20,
+            { maxRetries: 0, initialDelayMs: 1, backoffMultiplier: 1, maxDelayMs: 1 },
         );
 
         const payload = makePayload();
@@ -113,7 +119,45 @@ describe('CaptureOrchestrator', () => {
 
         await promise;
         expect(mockClient.exportVideoClip).toHaveBeenCalled();
+    });
 
+    it('should retry video export on transient NVR error and succeed', async () => {
         vi.useRealTimers();
+
+        mockClient.exportVideoClip
+            .mockRejectedValueOnce(new Error('No response from NVR'))
+            .mockImplementation(async () => Readable.from([Buffer.from('fake mp4 data')]));
+
+        orchestrator = new CaptureOrchestrator(
+            mockClient as unknown as UnifiProtectClient,
+            mockStorage as unknown as IStorageProvider,
+            0, 10, 20,
+            { maxRetries: 2, initialDelayMs: 1, backoffMultiplier: 1, maxDelayMs: 1 },
+        );
+
+        const payload = makePayload();
+        const result = await orchestrator.handleWebhook(payload);
+
+        expect(result.location).toContain('barking-dog-alert');
+        expect(mockClient.exportVideoClip).toHaveBeenCalledTimes(2);
+    });
+
+    it('should throw after exhausting all export retries', async () => {
+        vi.useRealTimers();
+
+        mockClient.exportVideoClip.mockRejectedValue(new Error('NVR permanently offline'));
+
+        orchestrator = new CaptureOrchestrator(
+            mockClient as unknown as UnifiProtectClient,
+            mockStorage as unknown as IStorageProvider,
+            0, 10, 20,
+            { maxRetries: 1, initialDelayMs: 1, backoffMultiplier: 1, maxDelayMs: 1 },
+        );
+
+        const payload = makePayload();
+
+        await expect(orchestrator.handleWebhook(payload))
+            .rejects.toThrow('NVR permanently offline');
+        expect(mockClient.exportVideoClip).toHaveBeenCalledTimes(2);
     });
 });

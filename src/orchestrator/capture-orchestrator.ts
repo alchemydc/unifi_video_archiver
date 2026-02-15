@@ -4,6 +4,7 @@ import type { UnifiProtectClient } from '../clients/unifi-protect-client.js';
 import type { IStorageProvider, StorageResult } from '../storage/storage-provider.js';
 import { computeTimeWindow } from '../utils/time-window.js';
 import { generateClipFilename } from '../utils/file-name.js';
+import { withRetry, type RetryOptions, DEFAULT_RETRY_OPTIONS } from '../utils/retry.js';
 
 /**
  * Helper to wrap setTimeout in a Promise.
@@ -23,6 +24,7 @@ export class CaptureOrchestrator {
         private readonly settlingDelayMs: number,
         private readonly preBufferSeconds: number,
         private readonly postBufferSeconds: number,
+        private readonly retryOptions: RetryOptions = DEFAULT_RETRY_OPTIONS,
     ) { }
 
     /**
@@ -67,7 +69,10 @@ export class CaptureOrchestrator {
 
         // 6. Export video clip from NVR
         logger.info(`Exporting video clip from NVR for ${camera.name}...`);
-        const stream = await this.client.exportVideoClip(camera, timeWindow);
+        const stream = await withRetry(
+            () => this.client.exportVideoClip(camera, timeWindow),
+            { ...this.retryOptions, label: `exportVideoClip(${camera.name})` },
+        );
 
         // 7. Save to storage
         logger.info(`Saving video clip to storage...`);

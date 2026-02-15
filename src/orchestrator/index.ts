@@ -16,6 +16,12 @@ export function createOrchestrator(
         env.SETTLING_DELAY_SECONDS * 1000,
         env.CAPTURE_PRE_BUFFER_SECONDS,
         env.CAPTURE_POST_BUFFER_SECONDS,
+        {
+            maxRetries: env.RETRY_MAX_ATTEMPTS,
+            initialDelayMs: env.RETRY_INITIAL_DELAY_MS,
+            backoffMultiplier: env.RETRY_BACKOFF_MULTIPLIER,
+            maxDelayMs: env.RETRY_MAX_DELAY_MS,
+        },
     );
 }
 

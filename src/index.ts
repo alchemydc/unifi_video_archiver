@@ -4,13 +4,20 @@ import { createUnifiClient } from './clients/unifi-protect-client.js';
 import { createStorageProvider } from './storage/index.js';
 import { createOrchestrator } from './orchestrator/index.js';
 import { createApp } from './server/index.js';
+import { withRetry } from './utils/retry.js';
 import type { Server } from 'node:http';
 
 async function main(): Promise<void> {
     // 1. Initialize dependencies
     const client = createUnifiClient();
     logger.info('Connecting to UniFi Protect NVR...');
-    await client.connect();
+    await withRetry(() => client.connect(), {
+        maxRetries: env.RETRY_MAX_ATTEMPTS,
+        initialDelayMs: env.RETRY_INITIAL_DELAY_MS,
+        backoffMultiplier: env.RETRY_BACKOFF_MULTIPLIER,
+        maxDelayMs: env.RETRY_MAX_DELAY_MS,
+        label: 'NVR connect',
+    });
 
     const storage = createStorageProvider();
     const orchestrator = createOrchestrator(client, storage);
