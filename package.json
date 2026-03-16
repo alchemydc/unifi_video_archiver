@@ -49,5 +49,10 @@
     "unifi-protect": "^4.27.7",
     "winston": "^3.19.0",
     "zod": "^4.3.6"
+  },
+  "overrides": {
+    "unifi-protect": {
+      "undici": "7.24.0"
+    }
   }
 }

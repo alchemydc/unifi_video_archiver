@@ -1,0 +1,8 @@
+node_modules
+dist
+coverage
+clips
+.git
+.gitignore
+.env
+npm-debug.log
