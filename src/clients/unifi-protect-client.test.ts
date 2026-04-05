@@ -12,8 +12,20 @@ vi.mock('unifi-protect', () => {
                 getBootstrap: vi.fn(),
                 bootstrap: {
                     cameras: [
-                        { id: 'cam-uuid-1', mac: 'A89C6C487E19', name: 'Front Door' },
-                        { id: 'cam-uuid-2', mac: 'B1:B2:B3:B4:B5:B6', name: 'Back Yard' }
+                        {
+                            id: 'cam-uuid-1',
+                            mac: 'A89C6C487E19',
+                            name: 'Front Door',
+                            host: '192.168.1.10',
+                            connectionHost: 'front-door.local'
+                        },
+                        {
+                            id: 'cam-uuid-2',
+                            mac: 'B1:B2:B3:B4:B5:B6',
+                            name: 'Back Yard',
+                            host: 'back-yard.local',
+                            connectionHost: null
+                        }
                     ],
                 },
                 retrieve: vi.fn(),
@@ -57,6 +69,30 @@ describe('UnifiProtectClient', () => {
             (mockApi.getBootstrap as ReturnType<typeof vi.fn>).mockResolvedValue(false);
 
             await expect(client.connect()).rejects.toThrow('UniFi Protect bootstrap failed');
+        });
+    });
+
+    describe('refreshBootstrap', () => {
+        it('should refresh and return current bootstrap cameras', async () => {
+            (mockApi.getBootstrap as ReturnType<typeof vi.fn>).mockResolvedValue(true);
+
+            await expect(client.refreshBootstrap()).resolves.toEqual([
+                {
+                    id: 'cam-uuid-1',
+                    mac: 'A89C6C487E19',
+                    name: 'Front Door',
+                    host: '192.168.1.10',
+                    connectionHost: 'front-door.local',
+                },
+                {
+                    id: 'cam-uuid-2',
+                    mac: 'B1:B2:B3:B4:B5:B6',
+                    name: 'Back Yard',
+                    host: 'back-yard.local',
+                    connectionHost: null,
+                }
+            ]);
+            expect(mockApi.getBootstrap).toHaveBeenCalled();
         });
     });
 
@@ -124,6 +160,27 @@ describe('UnifiProtectClient', () => {
         it('should call api.reset', () => {
             client.disconnect();
             expect(mockApi.reset).toHaveBeenCalled();
+        });
+    });
+
+    describe('getBootstrapCameras', () => {
+        it('should return full camera metadata from bootstrap', () => {
+            expect(client.getBootstrapCameras()).toEqual([
+                {
+                    id: 'cam-uuid-1',
+                    name: 'Front Door',
+                    mac: 'A89C6C487E19',
+                    host: '192.168.1.10',
+                    connectionHost: 'front-door.local',
+                },
+                {
+                    id: 'cam-uuid-2',
+                    name: 'Back Yard',
+                    mac: 'B1:B2:B3:B4:B5:B6',
+                    host: 'back-yard.local',
+                    connectionHost: null,
+                }
+            ]);
         });
     });
 

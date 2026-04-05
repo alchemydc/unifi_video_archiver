@@ -16,6 +16,7 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "scout": "node --import tsx src/bin/scout.ts",
+    "enum-devices": "node --import tsx src/bin/enum-devices.ts",
     "test-client": "node --import tsx src/bin/test-client.ts",
     "test-storage": "node --import tsx src/bin/test-storage.ts",
     "test-orchestrator": "node --import tsx src/bin/test-orchestrator.ts"

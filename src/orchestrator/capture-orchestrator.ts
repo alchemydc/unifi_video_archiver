@@ -43,9 +43,19 @@ export class CaptureOrchestrator {
         }
 
         // 2. Find camera
-        const camera = this.client.findCameraByMac(mac);
+        let camera = this.client.findCameraByMac(mac);
         if (!camera) {
-            throw new Error(`Camera not found for MAC: ${mac}`);
+            logger.warn(`Camera MAC ${mac} not found in cached bootstrap, refreshing inventory`);
+            await this.client.refreshBootstrap();
+            camera = this.client.findCameraByMac(mac);
+        }
+        if (!camera) {
+            const knownMacs = this.client.getBootstrapCameras()
+                .map(({ mac: cameraMac }) => cameraMac)
+                .sort()
+                .join(', ');
+
+            throw new Error(`Camera not found for MAC: ${mac}. Known bootstrap MACs: ${knownMacs || 'none'}`);
         }
         logger.info(`Processing event for camera: ${camera.name} (${mac})`);
 

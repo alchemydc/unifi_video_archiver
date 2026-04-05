@@ -28,12 +28,19 @@ export class UnifiProtectClient {
             throw new Error('UniFi Protect login failed');
         }
 
+        const cameras = await this.refreshBootstrap();
+        logger.info(`Connected to NVR: ${this.api.name}, ${cameras.length} cameras found`);
+    }
+
+    /**
+     * Refresh bootstrap inventory from UniFi Protect and return the current cameras.
+     */
+    async refreshBootstrap(): Promise<ProtectCameraConfig[]> {
         if (!await this.api.getBootstrap()) {
             throw new Error('UniFi Protect bootstrap failed');
         }
 
-        const cameras = this.api.bootstrap?.cameras ?? [];
-        logger.info(`Connected to NVR: ${this.api.name}, ${cameras.length} cameras found`);
+        return this.api.bootstrap?.cameras ?? [];
     }
 
     /**
@@ -48,6 +55,13 @@ export class UnifiProtectClient {
             const camMac = cam.mac.replace(/[: -]/g, '').toUpperCase();
             return camMac === normalizedMac;
         }) ?? null;
+    }
+
+    /**
+     * Return the full camera objects from the last successful bootstrap.
+     */
+    getBootstrapCameras(): ProtectCameraConfig[] {
+        return this.api.bootstrap?.cameras ?? [];
     }
 
     /**

@@ -16,7 +16,12 @@ const makePayload = (overrides?: Partial<WebhookPayload>): WebhookPayload => ({
 });
 
 describe('CaptureOrchestrator', () => {
-    let mockClient: { findCameraByMac: ReturnType<typeof vi.fn>; exportVideoClip: ReturnType<typeof vi.fn> };
+    let mockClient: {
+        findCameraByMac: ReturnType<typeof vi.fn>;
+        refreshBootstrap: ReturnType<typeof vi.fn>;
+        getBootstrapCameras: ReturnType<typeof vi.fn>;
+        exportVideoClip: ReturnType<typeof vi.fn>;
+    };
     let mockStorage: { save: ReturnType<typeof vi.fn> };
     let orchestrator: CaptureOrchestrator;
 
@@ -24,6 +29,8 @@ describe('CaptureOrchestrator', () => {
         vi.useFakeTimers();
         mockClient = {
             findCameraByMac: vi.fn().mockReturnValue({ id: 'cam-uuid-1', name: 'Front Door', mac: 'A89C6C487E19' }),
+            refreshBootstrap: vi.fn(async () => [{ id: 'cam-uuid-1', name: 'Front Door', mac: 'A89C6C487E19' }]),
+            getBootstrapCameras: vi.fn(() => [{ id: 'cam-uuid-1', name: 'Front Door', mac: 'A89C6C487E19' }]),
             exportVideoClip: vi.fn(async () => Readable.from([Buffer.from('fake mp4 data')])),
         };
         mockStorage = {
@@ -77,10 +84,33 @@ describe('CaptureOrchestrator', () => {
 
     it('should throw if camera is not found by MAC', async () => {
         mockClient.findCameraByMac.mockReturnValue(null);
+        mockClient.getBootstrapCameras.mockReturnValue([{ id: 'cam-uuid-old', name: 'Backyard East', mac: 'A89C6C487E19' }]);
         const payload = makePayload();
 
         await expect(orchestrator.handleWebhook(payload))
-            .rejects.toThrow('Camera not found for MAC: A89C6C487E19');
+            .rejects.toThrow('Camera not found for MAC: A89C6C487E19. Known bootstrap MACs: A89C6C487E19');
+        expect(mockClient.refreshBootstrap).toHaveBeenCalledTimes(1);
+    });
+
+    it('should refresh bootstrap and retry camera lookup on cache miss', async () => {
+        mockClient.findCameraByMac
+            .mockReturnValueOnce(null)
+            .mockReturnValueOnce({ id: 'cam-uuid-2', name: 'Backyard East', mac: 'A89C6C00F0A7' });
+        mockClient.getBootstrapCameras.mockReturnValue([{ id: 'cam-uuid-2', name: 'Backyard East', mac: 'A89C6C00F0A7' }]);
+
+        const payload = makePayload({
+            alarm: {
+                name: 'Barking Dog Alert',
+                triggers: [{ key: 'motion', device: 'A89C6C00F0A7' }],
+            },
+        });
+
+        const result = await orchestrator.handleWebhook(payload);
+
+        expect(mockClient.refreshBootstrap).toHaveBeenCalledTimes(1);
+        expect(mockClient.findCameraByMac).toHaveBeenNthCalledWith(1, 'A89C6C00F0A7');
+        expect(mockClient.findCameraByMac).toHaveBeenNthCalledWith(2, 'A89C6C00F0A7');
+        expect(result.location).toContain('barking-dog-alert');
     });
 
     it('should propagate errors from the UniFi client', async () => {
