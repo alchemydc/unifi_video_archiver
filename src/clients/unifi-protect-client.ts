@@ -70,6 +70,13 @@ export class UnifiProtectClient {
      * Throws an error on failure or session expiration (401).
      */
     async exportVideoClip(camera: ProtectCameraConfig, timeWindow: TimeWindow): Promise<Readable> {
+        // A 401 causes the unifi-protect library to log out and null its bootstrap, and retrieve()
+        // never re-authenticates. Re-login via bootstrap so retries after a session expiry can succeed.
+        if (!this.api.bootstrap) {
+            logger.warn('NVR session lost, re-authenticating');
+            await this.refreshBootstrap();
+        }
+
         const url = `https://${this.host}/proxy/protect/api/video/export?camera=${camera.id}&start=${timeWindow.start}&end=${timeWindow.end}`;
 
         const response = await this.api.retrieve(url, { method: 'GET' }, { timeout: 60000 });

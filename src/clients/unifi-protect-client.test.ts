@@ -154,6 +154,44 @@ describe('UnifiProtectClient', () => {
             await expect(client.exportVideoClip(mockCamera, mockTimeWindow))
                 .rejects.toThrow('Video export failed: HTTP 401');
         });
+
+        it('should not re-bootstrap when a bootstrap is present', async () => {
+            (mockApi.retrieve as ReturnType<typeof vi.fn>).mockResolvedValue({
+                statusCode: 200,
+                body: Readable.from(['data'])
+            });
+
+            await client.exportVideoClip(mockCamera, mockTimeWindow);
+            expect(mockApi.getBootstrap).not.toHaveBeenCalled();
+        });
+
+        it('should re-authenticate via bootstrap before export when bootstrap was cleared', async () => {
+            const cameras = (mockApi.bootstrap as { cameras: unknown[] }).cameras;
+            mockApi.bootstrap = null;
+            (mockApi.getBootstrap as ReturnType<typeof vi.fn>).mockImplementation(async () => {
+                mockApi.bootstrap = { cameras };
+                return true;
+            });
+            (mockApi.retrieve as ReturnType<typeof vi.fn>).mockResolvedValue({
+                statusCode: 200,
+                body: Readable.from(['data'])
+            });
+
+            await expect(client.exportVideoClip(mockCamera, mockTimeWindow)).resolves.toBeDefined();
+            expect(mockApi.getBootstrap).toHaveBeenCalledTimes(1);
+            const bootstrapOrder = (mockApi.getBootstrap as ReturnType<typeof vi.fn>).mock.invocationCallOrder[0];
+            const retrieveOrder = (mockApi.retrieve as ReturnType<typeof vi.fn>).mock.invocationCallOrder[0];
+            expect(bootstrapOrder).toBeLessThan(retrieveOrder);
+        });
+
+        it('should throw if re-authentication fails', async () => {
+            mockApi.bootstrap = null;
+            (mockApi.getBootstrap as ReturnType<typeof vi.fn>).mockResolvedValue(false);
+
+            await expect(client.exportVideoClip(mockCamera, mockTimeWindow))
+                .rejects.toThrow('UniFi Protect bootstrap failed');
+            expect(mockApi.retrieve).not.toHaveBeenCalled();
+        });
     });
 
     describe('disconnect', () => {
